@@ -331,6 +331,8 @@ FROM docs
 WHERE title_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query - θα ενημερωθεί μετά τη φόρτωση δεδομένων]
+
 **Εξήγηση:**
 - Χρησιμοποιεί τον τελεστή `|` για OR λογική
 - Αναζητά μόνο στη στήλη `title_tsv`
@@ -344,6 +346,8 @@ FROM docs
 WHERE abstract_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query - θα ενημερωθεί μετά τη φόρτωση δεδομένων]
+
 **Εξήγηση:**
 - Παρόμοιο με το Ερώτημα A, αλλά αναζητά `abstract_tsv`
 - Οι περιλήψεις είναι συνήθως μεγαλύτερες, οπότε μπορεί να επιστρέψουν περισσότερα αποτελέσματα
@@ -355,6 +359,8 @@ SELECT COUNT(*) AS count_title_or_abstract_rat_or_liver
 FROM docs
 WHERE (title_tsv || abstract_tsv) @@ to_tsquery('english', 'rat | liver');
 ```
+
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query - θα ενημερωθεί μετά τη φόρτωση δεδομένων]
 
 **Εξήγηση:**
 - Συνδυάζει και τις δύο στήλες TSVECTOR χρησιμοποιώντας `||`
@@ -370,12 +376,49 @@ WHERE title_tsv @@ to_tsquery('english', 'rat | liver')
   AND abstract_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query - θα ενημερωθεί μετά τη φόρτωση δεδομένων]
+
 **Εξήγηση:**
 - Απαιτεί αντιστοίχιση και στους δύο τίτλο και περίληψη
 - Πιο περιοριστικό από το Ερώτημα C
 - Χρησιμοποιεί δύο ξεχωριστές αναζητήσεις index
 
-### 7.6 Ερώτημα F: Ταξινομημένη Αναζήτηση
+### 7.6 Ερωτήματα E: 'rat' AND 'liver' (Επανάληψη A-D)
+
+#### Ερώτημα E-A: Τίτλος Περιέχει 'rat' AND 'liver'
+```sql
+SELECT COUNT(*) AS count_title_rat_and_liver
+FROM docs
+WHERE title_tsv @@ to_tsquery('english', 'rat & liver');
+```
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query]
+
+#### Ερώτημα E-B: Περίληψη Περιέχει 'rat' AND 'liver'
+```sql
+SELECT COUNT(*) AS count_abstract_rat_and_liver
+FROM docs
+WHERE abstract_tsv @@ to_tsquery('english', 'rat & liver');
+```
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query]
+
+#### Ερώτημα E-C: Τίτλος OR Περίληψη Περιέχει 'rat' AND 'liver'
+```sql
+SELECT COUNT(*) AS count_title_or_abstract_rat_and_liver
+FROM docs
+WHERE (title_tsv || abstract_tsv) @@ to_tsquery('english', 'rat & liver');
+```
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query]
+
+#### Ερώτημα E-D: Τίτλος AND Περίληψη Και τα Δύο Περιέχουν 'rat' AND 'liver'
+```sql
+SELECT COUNT(*) AS count_title_and_abstract_rat_and_liver
+FROM docs
+WHERE title_tsv @@ to_tsquery('english', 'rat & liver')
+  AND abstract_tsv @@ to_tsquery('english', 'rat & liver');
+```
+**Αποτέλεσμα:** [Αποτέλεσμα από εκτέλεση query]
+
+### 7.7 Ερώτημα F: Ταξινομημένη Αναζήτηση
 
 ```sql
 SELECT 
@@ -387,6 +430,8 @@ FROM docs
 WHERE abstract_tsv @@ to_tsquery('english', 'cancer & liver')
 ORDER BY rank DESC;
 ```
+
+**Αποτέλεσμα:** [Αριθμός εγγράφων που βρέθηκαν - θα ενημερωθεί μετά τη φόρτωση δεδομένων]
 
 **Χαρακτηριστικά:**
 - Χρησιμοποιεί `ts_rank_cd()` για βαθμολογία σχετικότητας
@@ -436,6 +481,12 @@ ORDER BY ndoc DESC
 LIMIT 10;
 ```
 
+**Αποτελέσματα (Top 10):**
+1. [Όρος 1]: [DF]
+2. [Όρος 2]: [DF]
+3. [Όρος 3]: [DF]
+... (θα ενημερωθεί μετά τη φόρτωση δεδομένων)
+
 **Ερμηνεία:**
 - Υψηλό DF = κοινός όρος (π.χ., "the", "study", "results")
 - Χαμηλό DF = σπάνιος όρος (π.χ., συγκεκριμένες ιατρικές καταστάσεις)
@@ -456,6 +507,12 @@ FROM ts_stat('SELECT title_tsv || abstract_tsv FROM docs
 ORDER BY nentry DESC
 LIMIT 10;
 ```
+
+**Αποτελέσματα (Top 10):**
+1. [Όρος 1]: [CF]
+2. [Όρος 2]: [CF]
+3. [Όρος 3]: [CF]
+... (θα ενημερωθεί μετά τη φόρτωση δεδομένων)
 
 **Ερμηνεία:**
 - CF ≥ DF (ο όρος μπορεί να εμφανίζεται πολλές φορές ανά έγγραφο)
