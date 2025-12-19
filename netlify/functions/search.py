@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add project root to path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 import psycopg2
@@ -25,7 +25,7 @@ DB_CONFIG = {
 
 def handler(event, context):
     """Netlify function handler for search requests"""
-    logger.info(f"Search function called with event: {json.dumps(event)}")
+    logger.info(f"Search function called")
     try:
         # Get query parameter
         query_params = event.get('queryStringParameters') or {}
