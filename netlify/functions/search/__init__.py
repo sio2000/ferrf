@@ -1,6 +1,11 @@
 import sys
 import os
 import json
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -20,10 +25,12 @@ DB_CONFIG = {
 
 def handler(event, context):
     """Netlify function handler for search requests"""
+    logger.info(f"Search function called with event: {json.dumps(event)}")
     try:
         # Get query parameter
         query_params = event.get('queryStringParameters') or {}
         query = query_params.get('q', '').strip()
+        logger.info(f"Search query: {query}")
         
         if not query:
             return {
@@ -36,8 +43,10 @@ def handler(event, context):
             }
         
         # Connect to database
+        logger.info("Connecting to database...")
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=RealDictCursor)
+        logger.info("Database connection established")
         
         # Build full-text search query
         search_query = """
@@ -57,6 +66,7 @@ def handler(event, context):
         
         cur.execute(search_query, (query, query))
         results = cur.fetchall()
+        logger.info(f"Found {len(results)} results")
         
         # Convert results to list of dicts
         results_list = [dict(row) for row in results]
@@ -64,7 +74,7 @@ def handler(event, context):
         cur.close()
         conn.close()
         
-        return {
+        response = {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
@@ -76,8 +86,11 @@ def handler(event, context):
                 'results': results_list
             })
         }
+        logger.info("Returning successful response")
+        return response
     
     except Exception as e:
+        logger.error(f"Error in search function: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {

@@ -1,6 +1,11 @@
 import sys
 import os
 import json
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -20,10 +25,13 @@ DB_CONFIG = {
 
 def handler(event, context):
     """Netlify function handler for stats requests"""
+    logger.info(f"Stats function called with event: {json.dumps(event)}")
     try:
         # Connect to database
+        logger.info("Connecting to database...")
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=RealDictCursor)
+        logger.info("Database connection established")
         
         # Get total document count
         cur.execute("SELECT COUNT(*) AS total FROM docs;")
@@ -41,7 +49,7 @@ def handler(event, context):
         cur.close()
         conn.close()
         
-        return {
+        response = {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
@@ -53,8 +61,11 @@ def handler(event, context):
                 'with_abstract': stats['with_abstract']
             })
         }
+        logger.info(f"Stats retrieved: {response['body']}")
+        return response
     
     except Exception as e:
+        logger.error(f"Error in stats function: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {
