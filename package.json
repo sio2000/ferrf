@@ -1,0 +1,9 @@
+{
+  "name": "ferrf",
+  "version": "1.0.0",
+  "description": "PubMed Full-Text Search Engine",
+  "devDependencies": {
+    "@netlify/plugin-python": "^1.0.0"
+  }
+}
+

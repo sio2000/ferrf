@@ -2,6 +2,9 @@
   command = "echo 'No build needed'"
   publish = "."
 
+[[plugins]]
+  package = "@netlify/plugin-python"
+
 [functions]
   directory = "netlify/functions"
   
