@@ -95,11 +95,16 @@ def load_data_to_postgres(json_file_path, batch_size=1000):
     print("Data loading completed successfully!")
 
 if __name__ == '__main__':
-    json_file = Path('data.txt')
+    # Try data/data.txt first, then data.txt in root
+    json_file = Path('data/data.txt')
+    if not json_file.exists():
+        json_file = Path('data.txt')
     
     if not json_file.exists():
         print(f"Error: {json_file} not found!", file=sys.stderr)
+        print("Looking for data/data.txt or data.txt", file=sys.stderr)
         sys.exit(1)
     
+    print(f"Loading data from: {json_file}")
     load_data_to_postgres(json_file)
 
