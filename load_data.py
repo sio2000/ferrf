@@ -103,8 +103,10 @@ if __name__ == '__main__':
     if not json_file.exists():
         print(f"Error: {json_file} not found!", file=sys.stderr)
         print("Looking for data/data.txt or data.txt", file=sys.stderr)
+        print(f"Current directory: {os.getcwd()}", file=sys.stderr)
         sys.exit(1)
     
     print(f"Loading data from: {json_file}")
+    print(f"File size: {json_file.stat().st_size / (1024*1024):.2f} MB")
     load_data_to_postgres(json_file)
 
