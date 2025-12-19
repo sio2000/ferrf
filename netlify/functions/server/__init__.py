@@ -5,8 +5,9 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.insert(0, project_root)
 
-from mangum import Mangum
+from serverless_wsgi import handle_request
 from app import app
 
-handler = Mangum(app)
+def handler(event, context):
+    return handle_request(app, event, context)
 
