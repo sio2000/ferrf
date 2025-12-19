@@ -19,7 +19,8 @@ DB_CONFIG = {
 }
 
 def handler(event, context):
-    """Netlify function handler for search requests"""
+    """Netlify function handler"""
+    """Handle search requests"""
     try:
         # Get query parameter
         query_params = event.get('queryStringParameters') or {}

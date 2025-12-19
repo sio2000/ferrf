@@ -1,76 +1,85 @@
-# Full-Text Search Engine Implementation
-## PostgreSQL Full Text Search on PubMed Central Articles
+# Αναφορά Εργασίας: Μηχανή Αναζήτησης Full-Text Search με PostgreSQL
 
-**Academic Report**
-
----
-
-## Table of Contents
-
-1. [Introduction](#1-introduction)
-2. [Dataset Description](#2-dataset-description)
-3. [Database Schema Design](#3-database-schema-design)
-4. [Data Loading Process](#4-data-loading-process)
-5. [Full Text Search Theory](#5-full-text-search-theory)
-6. [Indexing Strategy](#6-indexing-strategy)
-7. [Query Analysis & Results](#7-query-analysis--results)
-8. [Ranking & Term Statistics](#8-ranking--term-statistics)
-9. [Web Application Architecture](#9-web-application-architecture)
-10. [Conclusions](#10-conclusions)
+**Φοιτητής:** [Όνομα Φοιτητή]  
+**Μάθημα:** Βάσεις Δεδομένων / Information Retrieval  
+**Ημερομηνία:** Δεκέμβριος 2024
 
 ---
 
-## 1. Introduction
+## Περιεχόμενα
 
-This report presents a complete implementation of a full-text search engine built on PostgreSQL's native Full Text Search (FTS) capabilities. The system processes approximately 100,000 scientific articles from PubMed Central, providing efficient search functionality over article titles and abstracts.
-
-The primary objectives of this project are:
-- To demonstrate proficiency in database design and optimization
-- To implement and evaluate PostgreSQL's full-text search features
-- To create a production-ready search system with proper indexing
-- To analyze search performance and term statistics
-
-The implementation follows academic and production-level standards, ensuring correctness, efficiency, and reproducibility.
+1. [Εισαγωγή](#1-εισαγωγή)
+2. [Περιγραφή Δεδομένων](#2-περιγραφή-δεδομένων)
+3. [Σχεδίαση Σχήματος Βάσης](#3-σχεδίαση-σχήματος-βάσης)
+4. [Διαδικασία Φόρτωσης Δεδομένων](#4-διαδικασία-φόρτωσης-δεδομένων)
+5. [Θεωρία Full Text Search](#5-θεωρία-full-text-search)
+6. [Στρατηγική Δημιουργίας Indexes](#6-στρατηγική-δημιουργίας-indexes)
+7. [Ανάλυση Ερωτημάτων & Αποτελέσματα](#7-ανάλυση-ερωτημάτων--αποτελέσματα)
+8. [Ranking & Στατιστικά Όρων](#8-ranking--στατιστικά-όρων)
+9. [Αρχιτεκτονική Web Εφαρμογής](#9-αρχιτεκτονική-web-εφαρμογής)
+10. [Συμπεράσματα](#10-συμπεράσματα)
 
 ---
 
-## 2. Dataset Description
+## 1. Εισαγωγή
 
-### 2.1 Data Source
+Η παρούσα εργασία παρουσιάζει μια πλήρη υλοποίηση μηχανής αναζήτησης full-text search βασισμένης στις δυνατότητες Full Text Search (FTS) του PostgreSQL. Το σύστημα επεξεργάζεται περίπου 100,000 επιστημονικά άρθρα από το PubMed Central, παρέχοντας αποτελεσματική λειτουργικότητα αναζήτησης σε τίτλους και περιλήψεις άρθρων.
 
-The dataset consists of scientific articles from PubMed Central in JSON Lines format. Each line contains a single JSON object representing one article.
+### 1.1 Στόχοι Εργασίας
 
-### 2.2 Data Structure
+Οι κύριοι στόχοι αυτής της εργασίας είναι:
+- Να αποδείξω την κατανόηση της σχεδίασης και βελτιστοποίησης βάσεων δεδομένων
+- Να υλοποιήσω και να αξιολογήσω τις δυνατότητες full-text search του PostgreSQL
+- Να δημιουργήσω ένα σύστημα αναζήτησης έτοιμο για παραγωγή με κατάλληλη δημιουργία indexes
+- Να αναλύσω την απόδοση αναζήτησης και στατιστικά όρων
 
-Each article contains the following fields:
-- **title**: The article title (TEXT)
-- **abstract**: The article abstract (TEXT)
-- **authors**: Array of author objects with surname and given_names
-- **biblio**: Bibliographic information (journal, year, volume, etc.)
+### 1.2 Τεχνολογίες που Χρησιμοποιήθηκαν
+
+- **Βάση Δεδομένων:** PostgreSQL (μέσω Supabase)
+- **Backend:** Python με Netlify Functions (serverless)
+- **Frontend:** HTML, CSS, JavaScript (vanilla)
+- **Hosting:** Netlify (για static site και serverless functions)
+- **Database Hosting:** Supabase (managed PostgreSQL)
+
+---
+
+## 2. Περιγραφή Δεδομένων
+
+### 2.1 Πηγή Δεδομένων
+
+Το dataset αποτελείται από επιστημονικά άρθρα από το PubMed Central σε μορφή JSON Lines. Κάθε γραμμή περιέχει ένα JSON αντικείμενο που αντιπροσωπεύει ένα άρθρο.
+
+### 2.2 Δομή Δεδομένων
+
+Κάθε άρθρο περιέχει τα ακόλουθα πεδία:
+- **title**: Ο τίτλος του άρθρου (TEXT)
+- **abstract**: Η περίληψη του άρθρου (TEXT)
+- **authors**: Πίνακας αντικειμένων συγγραφέων με surname και given_names
+- **biblio**: Βιβλιογραφικές πληροφορίες (journal, year, volume, κλπ)
 - **pmid**: PubMed ID
 
-### 2.3 Dataset Statistics
+### 2.3 Στατιστικά Dataset
 
-- **Total Articles**: ~100,000 documents
-- **Format**: JSON Lines (one JSON object per line)
-- **Encoding**: UTF-8
-- **Size**: Approximately 50MB (compressed)
+- **Σύνολο Άρθρων:** ~100,000 έγγραφα
+- **Μορφή:** JSON Lines (ένα JSON αντικείμενο ανά γραμμή)
+- **Κωδικοποίηση:** UTF-8
+- **Μέγεθος:** Περίπου 50MB (συμπιεσμένο)
 
-### 2.4 Data Quality Considerations
+### 2.4 Εκτιμήσεις Ποιότητας Δεδομένων
 
-The loading process handles:
-- Missing titles (NULL or empty strings)
-- Missing abstracts (NULL or empty strings)
-- Special characters and Unicode encoding
-- Large text fields (abstracts can be several thousand characters)
+Η διαδικασία φόρτωσης χειρίζεται:
+- Λείποντες τίτλους (NULL ή κενά strings)
+- Λείποντες περιλήψεις (NULL ή κενά strings)
+- Ειδικούς χαρακτήρες και Unicode encoding
+- Μεγάλα πεδία κειμένου (οι περιλήψεις μπορεί να είναι αρκετές χιλιάδες χαρακτήρες)
 
 ---
 
-## 3. Database Schema Design
+## 3. Σχεδίαση Σχήματος Βάσης
 
-### 3.1 Initial Schema (Part A)
+### 3.1 Αρχικό Σχήμα (Μέρος A)
 
-The initial `docs` table schema is designed for simplicity and efficiency:
+Το αρχικό σχήμα του πίνακα `docs` σχεδιάστηκε για απλότητα και αποτελεσματικότητα:
 
 ```sql
 CREATE TABLE docs (
@@ -80,14 +89,14 @@ CREATE TABLE docs (
 );
 ```
 
-**Design Decisions:**
-- **ID**: Auto-generated identity column for efficient primary key
-- **TEXT type**: PostgreSQL's TEXT type is optimal for variable-length strings without length restrictions
-- **No NOT NULL constraints**: Some articles may have missing titles or abstracts
+**Αποφάσεις Σχεδίασης:**
+- **ID**: Αυτόματα παραγόμενη στήλη identity για αποτελεσματικό primary key
+- **Τύπος TEXT**: Ο τύπος TEXT του PostgreSQL είναι βέλτιστος για μεταβλητού μήκους strings χωρίς περιορισμούς μήκους
+- **Χωρίς NOT NULL constraints**: Κάποια άρθρα μπορεί να έχουν λείποντες τίτλους ή περιλήψεις
 
-### 3.2 Extended Schema (Part B)
+### 3.2 Επεκτεταμένο Σχήμα (Μέρος B)
 
-For full-text search, we extend the schema with TSVECTOR columns:
+Για full-text search, επεκτείνουμε το σχήμα με στήλες TSVECTOR:
 
 ```sql
 ALTER TABLE docs 
@@ -95,164 +104,139 @@ ADD COLUMN title_tsv TSVECTOR,
 ADD COLUMN abstract_tsv TSVECTOR;
 ```
 
-**TSVECTOR Explanation:**
-- TSVECTOR is PostgreSQL's data type for full-text search
-- Contains preprocessed, normalized tokens from the source text
-- Tokens are stemmed and stop words are removed
-- Enables efficient search operations using the `@@` operator
+**Εξήγηση TSVECTOR:**
+- Το TSVECTOR είναι ο τύπος δεδομένων του PostgreSQL για full-text search
+- Περιέχει προ-επεξεργασμένα, κανονικοποιημένα tokens από το πηγαίο κείμενο
+- Τα tokens είναι stemmed και οι stop words αφαιρούνται
+- Επιτρέπει αποτελεσματικές λειτουργίες αναζήτησης χρησιμοποιώντας τον τελεστή `@@`
 
-### 3.3 Schema Optimization
+### 3.3 Βελτιστοποίηση Σχήματος
 
-- **Separate TSVECTOR columns**: Allows searching title and abstract independently
-- **Composite search capability**: Can combine both columns using `||` operator
-- **Index-friendly**: TSVECTOR columns are indexed with GIN indexes for performance
-
----
-
-## 4. Data Loading Process
-
-### 4.1 Loading Strategy
-
-The data loading process follows these steps:
-
-1. **Create temporary table** for raw JSON data
-2. **Load JSON Lines** into temporary table
-3. **Extract and transform** title and abstract fields
-4. **Insert into docs table** with NULL handling
-5. **Verify data integrity**
-
-### 4.2 Implementation Approach
-
-We use a Python script (`load_data.py`) for data loading because:
-- JSON Lines format is easier to process programmatically
-- Better error handling for malformed JSON
-- Batch insertion for performance
-- Cross-platform compatibility
-
-### 4.3 SQL-Based Loading (Alternative)
-
-For environments where file access is available, we provide SQL-based loading:
-
-```sql
--- Create temporary table
-CREATE TEMP TABLE temp_json_data (
-    json_data JSONB
-);
-
--- Load JSON Lines (requires file system access)
-COPY temp_json_data(json_data) 
-FROM PROGRAM 'cat /path/to/data.txt' 
-(FORMAT text);
-
--- Extract and insert
-INSERT INTO docs (title, abstract)
-SELECT 
-    COALESCE(json_data->>'title', '') AS title,
-    COALESCE(json_data->>'abstract', '') AS abstract
-FROM temp_json_data
-WHERE json_data->>'title' IS NOT NULL 
-   OR json_data->>'abstract' IS NOT NULL;
-```
-
-### 4.4 Data Quality Handling
-
-The loading process handles:
-- **NULL values**: Uses `COALESCE()` to convert NULL to empty string
-- **Missing fields**: Filters out documents with both title and abstract missing
-- **Encoding**: Proper UTF-8 handling for international characters
-- **Large files**: Batch processing to manage memory efficiently
-
-### 4.5 Loading Performance
-
-- **Batch size**: 1,000 records per batch
-- **Transaction management**: Commits after each batch
-- **Error recovery**: Continues processing on individual record errors
-- **Verification**: Post-load statistics to confirm data integrity
+- **Ξεχωριστές στήλες TSVECTOR**: Επιτρέπει αναζήτηση σε τίτλο και περίληψη ανεξάρτητα
+- **Δυνατότητα σύνθετης αναζήτησης**: Μπορεί να συνδυάσει και τις δύο στήλες χρησιμοποιώντας τον τελεστή `||`
+- **Φιλικό προς indexes**: Οι στήλες TSVECTOR είναι indexed με GIN indexes για απόδοση
 
 ---
 
-## 5. Full Text Search Theory
+## 4. Διαδικασία Φόρτωσης Δεδομένων
 
-### 5.1 PostgreSQL Full Text Search Overview
+### 4.1 Στρατηγική Φόρτωσης
 
-PostgreSQL's Full Text Search (FTS) is a powerful system for searching text documents. It provides:
+Η διαδικασία φόρτωσης δεδομένων ακολουθεί τα ακόλουθα βήματα:
 
-- **Tokenization**: Splits text into words (tokens)
-- **Normalization**: Converts to lowercase, removes accents
-- **Stemming**: Reduces words to root forms (e.g., "running" → "run")
-- **Stop word removal**: Filters common words (the, a, an, etc.)
-- **Ranking**: Scores documents by relevance
+1. **Δημιουργία προσωρινού πίνακα** για raw JSON δεδομένα
+2. **Φόρτωση JSON Lines** στον προσωρινό πίνακα
+3. **Εξαγωγή και μετασχηματισμός** των πεδίων title και abstract
+4. **Εισαγωγή στον πίνακα docs** με χειρισμό NULL
+5. **Επαλήθευση ακεραιότητας δεδομένων**
 
-### 5.2 Key Components
+### 4.2 Προσέγγιση Υλοποίησης
+
+Χρησιμοποιήσαμε Python script (`load_data.py`) για τη φόρτωση δεδομένων επειδή:
+- Η μορφή JSON Lines είναι πιο εύκολη στην προγραμματική επεξεργασία
+- Καλύτερος χειρισμός σφαλμάτων για κακοσχηματισμένα JSON
+- Batch insertion για απόδοση
+- Cross-platform συμβατότητα
+
+### 4.3 Χειρισμός Ποιότητας Δεδομένων
+
+Η διαδικασία φόρτωσης χειρίζεται:
+- **NULL τιμές**: Χρησιμοποιεί `COALESCE()` για μετατροπή NULL σε κενό string
+- **Λείποντα πεδία**: Φιλτράρει έγγραφα με και τους δύο τίτλο και περίληψη λείποντες
+- **Κωδικοποίηση**: Σωστός χειρισμός UTF-8 για διεθνείς χαρακτήρες
+- **Μεγάλα αρχεία**: Batch processing για αποτελεσματική διαχείριση μνήμης
+
+### 4.4 Απόδοση Φόρτωσης
+
+- **Μέγεθος batch**: 1,000 εγγραφές ανά batch
+- **Διαχείριση συναλλαγών**: Commits μετά από κάθε batch
+- **Ανάκτηση σφαλμάτων**: Συνεχίζει την επεξεργασία σε σφάλματα μεμονωμένων εγγραφών
+- **Επαλήθευση**: Στατιστικά μετά τη φόρτωση για επιβεβαίωση ακεραιότητας δεδομένων
+
+---
+
+## 5. Θεωρία Full Text Search
+
+### 5.1 Επισκόπηση PostgreSQL Full Text Search
+
+Το Full Text Search (FTS) του PostgreSQL είναι ένα ισχυρό σύστημα για αναζήτηση σε έγγραφα κειμένου. Παρέχει:
+
+- **Tokenization**: Χωρίζει το κείμενο σε λέξεις (tokens)
+- **Normalization**: Μετατρέπει σε lowercase, αφαιρεί τόνους
+- **Stemming**: Μειώνει τις λέξεις σε ριζικές μορφές (π.χ., "running" → "run")
+- **Αφαίρεση stop words**: Φιλτράρει κοινές λέξεις (the, a, an, κλπ)
+- **Ranking**: Βαθμολογεί έγγραφα κατά σχετικότητα
+
+### 5.2 Βασικά Συστατικά
 
 #### 5.2.1 TSVECTOR
 
-TSVECTOR is a sorted list of distinct lexemes (normalized words):
+Το TSVECTOR είναι μια ταξινομημένη λίστα διακριτών lexemes (κανονικοποιημένες λέξεις):
 
 ```sql
 SELECT to_tsvector('english', 'The quick brown fox');
--- Result: 'brown':3 'fox':4 'quick':2
+-- Αποτέλεσμα: 'brown':3 'fox':4 'quick':2
 ```
 
-- Numbers indicate word positions
-- Stop words ("the") are removed
-- Words are normalized to lowercase
+- Οι αριθμοί υποδεικνύουν θέσεις λέξεων
+- Οι stop words ("the") αφαιρούνται
+- Οι λέξεις κανονικοποιούνται σε lowercase
 
 #### 5.2.2 TSQUERY
 
-TSQUERY represents a search query:
+Το TSQUERY αντιπροσωπεύει ένα ερώτημα αναζήτησης:
 
 ```sql
 SELECT to_tsquery('english', 'fox & brown');
--- Result: 'fox' & 'brown'
+-- Αποτέλεσμα: 'fox' & 'brown'
 ```
 
-**Operators:**
-- `&` (AND): Both terms must appear
-- `|` (OR): Either term can appear
-- `!` (NOT): Term must not appear
-- `()`: Grouping for complex queries
+**Τελεστές:**
+- `&` (AND): Και οι δύο όροι πρέπει να εμφανίζονται
+- `|` (OR): Οποιοσδήποτε όρος μπορεί να εμφανίζεται
+- `!` (NOT): Ο όρος δεν πρέπει να εμφανίζεται
+- `()`: Ομαδοποίηση για σύνθετα ερωτήματα
 
-#### 5.2.3 Match Operator (@@)
+#### 5.2.3 Τελεστής Αντιστοίχισης (@@)
 
-The `@@` operator checks if a TSVECTOR matches a TSQUERY:
+Ο τελεστής `@@` ελέγχει αν ένα TSVECTOR ταιριάζει με ένα TSQUERY:
 
 ```sql
 SELECT * FROM docs 
 WHERE title_tsv @@ to_tsquery('english', 'cancer');
 ```
 
-### 5.3 Text Search Functions
+### 5.3 Συναρτήσεις Text Search
 
 #### 5.3.1 to_tsvector()
 
-Converts text to TSVECTOR:
+Μετατρέπει κείμενο σε TSVECTOR:
 
 ```sql
 to_tsvector(config, text) → TSVECTOR
 ```
 
-- **config**: Language configuration (e.g., 'english')
-- **text**: Source text to process
+- **config**: Ρύθμιση γλώσσας (π.χ., 'english')
+- **text**: Πηγαίο κείμενο προς επεξεργασία
 
 #### 5.3.2 to_tsquery() vs plainto_tsquery()
 
-- **to_tsquery()**: Expects properly formatted query with operators
+- **to_tsquery()**: Αναμένει σωστά μορφοποιημένο ερώτημα με τελεστές
   ```sql
-  to_tsquery('english', 'rat | liver')  -- OR operator
-  to_tsquery('english', 'rat & liver')   -- AND operator
+  to_tsquery('english', 'rat | liver')  -- OR τελεστής
+  to_tsquery('english', 'rat & liver')   -- AND τελεστής
   ```
 
-- **plainto_tsquery()**: User-friendly, automatically handles operators
+- **plainto_tsquery()**: Φιλικό προς τον χρήστη, χειρίζεται αυτόματα τους τελεστές
   ```sql
-  plainto_tsquery('english', 'rat liver')  -- Automatically becomes AND
+  plainto_tsquery('english', 'rat liver')  -- Αυτόματα γίνεται AND
   ```
 
-### 5.4 Ranking Functions
+### 5.4 Συναρτήσεις Ranking
 
 #### 5.4.1 ts_rank()
 
-Standard ranking based on term frequency:
+Τυπικό ranking βασισμένο στη συχνότητα όρων:
 
 ```sql
 ts_rank(tsvector, tsquery) → REAL
@@ -260,24 +244,24 @@ ts_rank(tsvector, tsquery) → REAL
 
 #### 5.4.2 ts_rank_cd()
 
-Cover density ranking (used in this project):
+Cover density ranking (χρησιμοποιήθηκε σε αυτή την εργασία):
 
 ```sql
 ts_rank_cd(tsvector, tsquery) → REAL
 ```
 
-**Advantages:**
-- Considers proximity of matching terms
-- Better relevance scoring
-- More suitable for multi-term queries
+**Πλεονεκτήματα:**
+- Λαμβάνει υπόψη την εγγύτητα των ταιριαζόντων όρων
+- Καλύτερη βαθμολογία σχετικότητας
+- Πιο κατάλληλο για multi-term queries
 
 ---
 
-## 6. Indexing Strategy
+## 6. Στρατηγική Δημιουργίας Indexes
 
 ### 6.1 GIN Indexes
 
-We use **GIN (Generalized Inverted Index)** indexes for TSVECTOR columns:
+Χρησιμοποιήσαμε **GIN (Generalized Inverted Index)** indexes για στήλες TSVECTOR:
 
 ```sql
 CREATE INDEX idx_docs_title_tsv ON docs USING GIN (title_tsv);
@@ -286,30 +270,30 @@ CREATE INDEX idx_docs_combined_tsv ON docs
 USING GIN ((title_tsv || abstract_tsv));
 ```
 
-### 6.2 Why GIN?
+### 6.2 Γιατί GIN;
 
-**GIN indexes are optimal for:**
-- Full-text search operations
-- Array operations
-- JSONB queries
-- Containment checks
+**Τα GIN indexes είναι βέλτιστα για:**
+- Λειτουργίες full-text search
+- Λειτουργίες πινάκων
+- Ερωτήματα JSONB
+- Ελέγχους περιέχοντος
 
-**Characteristics:**
-- **Fast lookups**: O(log n) search time
-- **Space efficient**: Compressed storage
-- **Update performance**: Slightly slower than B-tree, but acceptable for read-heavy workloads
+**Χαρακτηριστικά:**
+- **Γρήγορες αναζητήσεις**: O(log n) χρόνος αναζήτησης
+- **Αποδοτικότητα χώρου**: Συμπιεσμένη αποθήκευση
+- **Απόδοση ενημερώσεων**: Ελαφρώς πιο αργή από B-tree, αλλά αποδεκτή για read-heavy workloads
 
-### 6.3 Index Design
+### 6.3 Σχεδίαση Indexes
 
-We create three indexes:
+Δημιουργήσαμε τρία indexes:
 
-1. **title_tsv index**: For title-only searches
-2. **abstract_tsv index**: For abstract-only searches
-3. **combined index**: For searches across both fields
+1. **title_tsv index**: Για αναζητήσεις μόνο στον τίτλο
+2. **abstract_tsv index**: Για αναζητήσεις μόνο στην περίληψη
+3. **combined index**: Για αναζητήσεις και στα δύο πεδία
 
-### 6.4 Automatic TSVECTOR Updates
+### 6.4 Αυτόματες Ενημερώσεις TSVECTOR
 
-We use triggers to automatically update TSVECTOR columns:
+Χρησιμοποιήσαμε triggers για αυτόματη ενημέρωση των στηλών TSVECTOR:
 
 ```sql
 CREATE TRIGGER docs_tsvector_update
@@ -318,34 +302,28 @@ CREATE TRIGGER docs_tsvector_update
     EXECUTE FUNCTION update_docs_tsvector();
 ```
 
-**Benefits:**
-- Ensures TSVECTOR columns are always current
-- No manual maintenance required
-- Consistent data integrity
-
-### 6.5 Index Maintenance
-
-- **ANALYZE**: Updates query planner statistics
-- **VACUUM**: Reclaims storage and updates visibility map
-- **REINDEX**: Rebuilds indexes if needed
+**Οφέλη:**
+- Εξασφαλίζει ότι οι στήλες TSVECTOR είναι πάντα ενημερωμένες
+- Δεν απαιτείται χειροκίνητη συντήρηση
+- Συνεπής ακεραιότητα δεδομένων
 
 ---
 
-## 7. Query Analysis & Results
+## 7. Ανάλυση Ερωτημάτων & Αποτελέσματα
 
-### 7.1 Query Categories
+### 7.1 Κατηγορίες Ερωτημάτων
 
-We implement queries in two categories:
-- **OR queries**: 'rat' OR 'liver'
-- **AND queries**: 'rat' AND 'liver'
+Υλοποιήσαμε ερωτήματα σε δύο κατηγορίες:
+- **OR ερωτήματα**: 'rat' OR 'liver'
+- **AND ερωτήματα**: 'rat' AND 'liver'
 
-Each category includes four variations:
-- A: Title only
-- B: Abstract only
-- C: Title OR Abstract
-- D: Title AND Abstract
+Κάθε κατηγορία περιλαμβάνει τέσσερις παραλλαγές:
+- A: Μόνο τίτλος
+- B: Μόνο περίληψη
+- C: Τίτλος OR Περίληψη
+- D: Τίτλος AND Περίληψη
 
-### 7.2 Query A: Title Contains 'rat' OR 'liver'
+### 7.2 Ερώτημα A: Τίτλος Περιέχει 'rat' OR 'liver'
 
 ```sql
 SELECT COUNT(*) AS count_title_rat_or_liver
@@ -353,12 +331,12 @@ FROM docs
 WHERE title_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
-**Explanation:**
-- Uses `|` operator for OR logic
-- Searches only in `title_tsv` column
-- Uses GIN index for efficient execution
+**Εξήγηση:**
+- Χρησιμοποιεί τον τελεστή `|` για OR λογική
+- Αναζητά μόνο στη στήλη `title_tsv`
+- Χρησιμοποιεί GIN index για αποτελεσματική εκτέλεση
 
-### 7.3 Query B: Abstract Contains 'rat' OR 'liver'
+### 7.3 Ερώτημα B: Περίληψη Περιέχει 'rat' OR 'liver'
 
 ```sql
 SELECT COUNT(*) AS count_abstract_rat_or_liver
@@ -366,11 +344,11 @@ FROM docs
 WHERE abstract_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
-**Explanation:**
-- Similar to Query A, but searches `abstract_tsv`
-- Abstracts are typically longer, so may return more results
+**Εξήγηση:**
+- Παρόμοιο με το Ερώτημα A, αλλά αναζητά `abstract_tsv`
+- Οι περιλήψεις είναι συνήθως μεγαλύτερες, οπότε μπορεί να επιστρέψουν περισσότερα αποτελέσματα
 
-### 7.4 Query C: Title OR Abstract Contains 'rat' OR 'liver'
+### 7.4 Ερώτημα C: Τίτλος OR Περίληψη Περιέχει 'rat' OR 'liver'
 
 ```sql
 SELECT COUNT(*) AS count_title_or_abstract_rat_or_liver
@@ -378,12 +356,12 @@ FROM docs
 WHERE (title_tsv || abstract_tsv) @@ to_tsquery('english', 'rat | liver');
 ```
 
-**Explanation:**
-- Combines both TSVECTOR columns using `||`
-- Uses combined GIN index for performance
-- Returns documents where term appears in either field
+**Εξήγηση:**
+- Συνδυάζει και τις δύο στήλες TSVECTOR χρησιμοποιώντας `||`
+- Χρησιμοποιεί combined GIN index για απόδοση
+- Επιστρέφει έγγραφα όπου ο όρος εμφανίζεται σε οποιοδήποτε πεδίο
 
-### 7.5 Query D: Title AND Abstract Both Contain 'rat' OR 'liver'
+### 7.5 Ερώτημα D: Τίτλος AND Περίληψη Και τα Δύο Περιέχουν 'rat' OR 'liver'
 
 ```sql
 SELECT COUNT(*) AS count_title_and_abstract_rat_or_liver
@@ -392,28 +370,12 @@ WHERE title_tsv @@ to_tsquery('english', 'rat | liver')
   AND abstract_tsv @@ to_tsquery('english', 'rat | liver');
 ```
 
-**Explanation:**
-- Requires match in BOTH title and abstract
-- More restrictive than Query C
-- Uses two separate index lookups
+**Εξήγηση:**
+- Απαιτεί αντιστοίχιση και στους δύο τίτλο και περίληψη
+- Πιο περιοριστικό από το Ερώτημα C
+- Χρησιμοποιεί δύο ξεχωριστές αναζητήσεις index
 
-### 7.6 Query E: AND Queries
-
-Queries E-A through E-D repeat the same patterns but with AND logic:
-
-```sql
--- Example: Title contains 'rat' AND 'liver'
-SELECT COUNT(*) AS count_title_rat_and_liver
-FROM docs
-WHERE title_tsv @@ to_tsquery('english', 'rat & liver');
-```
-
-**Key Difference:**
-- Uses `&` operator instead of `|`
-- More restrictive (both terms required)
-- Typically returns fewer results
-
-### 7.7 Query F: Ranked Search
+### 7.6 Ερώτημα F: Ταξινομημένη Αναζήτηση
 
 ```sql
 SELECT 
@@ -426,43 +388,43 @@ WHERE abstract_tsv @@ to_tsquery('english', 'cancer & liver')
 ORDER BY rank DESC;
 ```
 
-**Features:**
-- Uses `ts_rank_cd()` for relevance scoring
-- Orders by descending rank (most relevant first)
-- Returns full document details, not just count
-- Truncates abstract for display
+**Χαρακτηριστικά:**
+- Χρησιμοποιεί `ts_rank_cd()` για βαθμολογία σχετικότητας
+- Ταξινομεί κατά φθίνουσα βαθμολογία (πιο σχετικό πρώτο)
+- Επιστρέφει πλήρη λεπτομέρειες εγγράφου, όχι μόνο count
+- Περικόπτει την περίληψη για εμφάνιση
 
-**Ranking Explanation:**
-- Higher rank = more relevant
-- Considers term frequency and proximity
-- Documents with both terms close together rank higher
+**Εξήγηση Ranking:**
+- Υψηλότερη βαθμολογία = πιο σχετικό
+- Λαμβάνει υπόψη τη συχνότητα όρων και την εγγύτητα
+- Έγγραφα με και τους δύο όρους κοντά μεταξύ τους βαθμολογούνται υψηλότερα
 
-### 7.8 Expected Results Analysis
+### 7.7 Ανάλυση Αναμενόμενων Αποτελεσμάτων
 
-**OR Queries (rat | liver):**
-- Typically return more results than AND queries
-- Useful for broad searches
-- May include less relevant documents
+**OR Ερωτήματα (rat | liver):**
+- Συνήθως επιστρέφουν περισσότερα αποτελέσματα από AND ερωτήματα
+- Χρήσιμα για ευρείες αναζητήσεις
+- Μπορεί να περιλαμβάνουν λιγότερο σχετικά έγγραφα
 
-**AND Queries (rat & liver):**
-- More precise results
-- Higher relevance
-- Fewer false positives
+**AND Ερωτήματα (rat & liver):**
+- Πιο ακριβή αποτελέσματα
+- Υψηλότερη σχετικότητα
+- Λιγότερα false positives
 
-**Field Comparison:**
-- Abstract searches usually return more results (longer text)
-- Title searches are more specific
-- Combined searches maximize recall
+**Σύγκριση Πεδίων:**
+- Οι αναζητήσεις περιλήψεων συνήθως επιστρέφουν περισσότερα αποτελέσματα (μεγαλύτερο κείμενο)
+- Οι αναζητήσεις τίτλων είναι πιο συγκεκριμένες
+- Οι συνδυασμένες αναζητήσεις μεγιστοποιούν την ανάκληση
 
 ---
 
-## 8. Ranking & Term Statistics
+## 8. Ranking & Στατιστικά Όρων
 
 ### 8.1 Document Frequency (DF)
 
-**Definition:** Number of documents containing a term.
+**Ορισμός:** Αριθμός εγγράφων που περιέχουν έναν όρο.
 
-**Query G Implementation:**
+**Υλοποίηση Ερωτήματος G:**
 
 ```sql
 SELECT 
@@ -474,16 +436,16 @@ ORDER BY ndoc DESC
 LIMIT 10;
 ```
 
-**Interpretation:**
-- High DF = common term (e.g., "the", "study", "results")
-- Low DF = rare term (e.g., specific medical conditions)
-- Useful for understanding corpus characteristics
+**Ερμηνεία:**
+- Υψηλό DF = κοινός όρος (π.χ., "the", "study", "results")
+- Χαμηλό DF = σπάνιος όρος (π.χ., συγκεκριμένες ιατρικές καταστάσεις)
+- Χρήσιμο για κατανόηση χαρακτηριστικών corpus
 
 ### 8.2 Collection Frequency (CF)
 
-**Definition:** Total number of occurrences of a term across all documents.
+**Ορισμός:** Συνολικός αριθμός εμφανίσεων ενός όρου σε όλα τα έγγραφα.
 
-**Query H Implementation:**
+**Υλοποίηση Ερωτήματος H:**
 
 ```sql
 SELECT 
@@ -495,30 +457,31 @@ ORDER BY nentry DESC
 LIMIT 10;
 ```
 
-**Interpretation:**
-- CF ≥ DF (term can appear multiple times per document)
-- High CF = frequently used term
-- Ratio CF/DF indicates average term frequency per document
+**Ερμηνεία:**
+- CF ≥ DF (ο όρος μπορεί να εμφανίζεται πολλές φορές ανά έγγραφο)
+- Υψηλό CF = συχνά χρησιμοποιούμενος όρος
+- Ο λόγος CF/DF υποδεικνύει μέση συχνότητα όρου ανά έγγραφο
 
-### 8.3 Term Statistics Use Cases
+### 8.3 Χρήσεις Στατιστικών Όρων
 
-1. **Stop word identification**: Terms with very high DF/CF
-2. **Domain-specific vocabulary**: Medical/scientific terms
-3. **Index optimization**: Focus indexing on important terms
-4. **Query expansion**: Suggest related terms
+1. **Αναγνώριση stop words**: Όροι με πολύ υψηλό DF/CF
+2. **Ειδικό λεξιλόγιο τομέα**: Ιατρικοί/επιστημονικοί όροι
+3. **Βελτιστοποίηση index**: Εστίαση index σε σημαντικούς όρους
+4. **Επέκταση ερωτήματος**: Προσφορά σχετικών όρων
 
 ---
 
-## 9. Web Application Architecture
+## 9. Αρχιτεκτονική Web Εφαρμογής
 
-### 9.1 Technology Stack
+### 9.1 Στοίβα Τεχνολογιών
 
-- **Backend**: Flask (Python web framework)
-- **Database**: PostgreSQL with FTS
-- **Frontend**: HTML, CSS, JavaScript (vanilla)
-- **Connection**: psycopg2 (PostgreSQL adapter)
+- **Backend:** Netlify Functions (Python serverless functions)
+- **Βάση Δεδομένων:** PostgreSQL (Supabase managed)
+- **Frontend:** HTML, CSS, JavaScript (vanilla)
+- **Σύνδεση:** psycopg2 (PostgreSQL adapter)
+- **Hosting:** Netlify (static site + serverless functions)
 
-### 9.2 Architecture Overview
+### 9.2 Επισκόπηση Αρχιτεκτονικής
 
 ```
 ┌─────────────┐
@@ -527,25 +490,35 @@ LIMIT 10;
        │ HTTP
        ▼
 ┌─────────────┐
-│  Flask App  │
-│  (app.py)   │
+│  index.html │
+│  (Static)   │
+└──────┬──────┘
+       │ AJAX
+       ▼
+┌─────────────┐
+│ Netlify     │
+│ Functions   │
+│ (Python)    │
 └──────┬──────┘
        │ SQL
        ▼
 ┌─────────────┐
+│ Supabase    │
 │ PostgreSQL  │
 │   (FTS)     │
 └─────────────┘
 ```
 
-### 9.3 Key Components
+### 9.3 Βασικά Συστατικά
 
-#### 9.3.1 Search Endpoint
+#### 9.3.1 Search Function
+
+Το function `netlify/functions/search/__init__.py` χειρίζεται αιτήματα αναζήτησης:
 
 ```python
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    query = request.args.get('q', '').strip()
+def handler(event, context):
+    query_params = event.get('queryStringParameters') or {}
+    query = query_params.get('q', '').strip()
     
     search_query = """
         SELECT 
@@ -559,110 +532,126 @@ def search():
     """
 ```
 
-**Features:**
-- Uses `plainto_tsquery()` for user-friendly queries
-- Ranks results with `ts_rank_cd()`
-- Limits to 50 results for performance
-- Returns JSON for AJAX requests
+**Χαρακτηριστικά:**
+- Χρησιμοποιεί `plainto_tsquery()` για φιλικά προς τον χρήστη ερωτήματα
+- Βαθμολογεί αποτελέσματα με `ts_rank_cd()`
+- Περιορίζει σε 50 αποτελέσματα για απόδοση
+- Επιστρέφει JSON για AJAX αιτήματα
 
-#### 9.3.2 Statistics Endpoint
+#### 9.3.2 Stats Function
+
+Το function `netlify/functions/stats/__init__.py` παρέχει στατιστικά:
 
 ```python
-@app.route('/stats', methods=['GET'])
-def stats():
-    # Returns total documents, documents with title/abstract
+def handler(event, context):
+    # Επιστρέφει συνολικά έγγραφα, έγγραφα με τίτλο/περίληψη
 ```
 
-Provides real-time database statistics.
+Παρέχει στατιστικά βάσης δεδομένων σε πραγματικό χρόνο.
 
-### 9.4 Frontend Design
+### 9.4 Σχεδίαση Frontend
 
-**Features:**
-- Modern, responsive UI
-- Real-time search (no page reload)
-- Ranked results display
-- Statistics dashboard
-- Error handling and loading states
+**Χαρακτηριστικά:**
+- Σύγχρονο, responsive UI
+- Αναζήτηση σε πραγματικό χρόνο (χωρίς reload σελίδας)
+- Εμφάνιση ταξινομημένων αποτελεσμάτων
+- Dashboard στατιστικών
+- Χειρισμός σφαλμάτων και καταστάσεις φόρτωσης
 
-### 9.5 Security Considerations
+### 9.5 Θεωρήσεις Ασφαλείας
 
-- **SQL Injection Prevention**: Parameterized queries
-- **XSS Prevention**: HTML escaping in templates
-- **Input Validation**: Query sanitization
-- **Error Handling**: Graceful error messages
+- **Πρόληψη SQL Injection**: Παραμετροποιημένα ερωτήματα
+- **Πρόληψη XSS**: HTML escaping στο frontend
+- **Επικύρωση Εισόδου**: Καθαρισμός ερωτήματος
+- **Χειρισμός Σφαλμάτων**: Ευγενικά μηνύματα σφάλματος
 
-### 9.6 Performance Optimizations
+### 9.6 Βελτιστοποιήσεις Απόδοσης
 
-- **Connection Pooling**: Reuse database connections
-- **Query Limiting**: Max 50 results per query
-- **Index Usage**: All queries use GIN indexes
-- **Caching**: Consider Redis for frequent queries (future enhancement)
+- **Χρήση Index**: Όλα τα ερωτήματα χρησιμοποιούν GIN indexes
+- **Περιορισμός Ερωτήματος**: Μέγιστα 50 αποτελέσματα ανά ερώτημα
+- **Serverless Architecture**: Αυτόματη κλιμάκωση
+- **Static Hosting**: Γρήγορη φόρτωση frontend
 
----
+### 9.7 Υλοποίηση με Supabase
 
-## 10. Conclusions
+Η βάση δεδομένων φιλοξενείται στο Supabase, που παρέχει:
+- Managed PostgreSQL instance
+- Αυτόματες backups
+- Scalability
+- REST API (για μελλοντική χρήση)
 
-### 10.1 Project Summary
-
-This project successfully implements a full-text search engine using PostgreSQL's native FTS capabilities. The system processes ~100,000 scientific articles and provides:
-
-- Efficient data loading from JSON Lines format
-- Optimized full-text search with GIN indexes
-- Comprehensive query implementation (OR, AND, ranking)
-- Term statistics analysis (DF, CF)
-- Production-ready web application
-
-### 10.2 Key Achievements
-
-1. **Complete Implementation**: All required components implemented
-2. **Performance**: GIN indexes ensure fast query execution
-3. **Scalability**: Architecture supports large datasets
-4. **Usability**: Web interface provides intuitive search experience
-5. **Documentation**: Comprehensive code and report documentation
-
-### 10.3 Technical Insights
-
-**PostgreSQL FTS Strengths:**
-- Native integration with database
-- Efficient indexing (GIN)
-- Flexible query syntax
-- Good ranking algorithms
-- Language-specific configurations
-
-**Design Decisions:**
-- Separate TSVECTOR columns for flexibility
-- Automatic updates via triggers
-- Combined indexes for multi-field search
-- Cover density ranking for better relevance
-
-### 10.4 Future Enhancements
-
-1. **Query Expansion**: Suggest related terms
-2. **Faceted Search**: Filter by journal, year, etc.
-3. **Advanced Ranking**: Custom ranking functions
-4. **Caching Layer**: Redis for frequent queries
-5. **Analytics**: Search query analytics
-6. **Multi-language Support**: Additional language configurations
-
-### 10.5 Lessons Learned
-
-- **Indexing is Critical**: GIN indexes dramatically improve performance
-- **Ranking Matters**: `ts_rank_cd()` provides better relevance than `ts_rank()`
-- **User Experience**: `plainto_tsquery()` is more user-friendly than `to_tsquery()`
-- **Data Quality**: Proper NULL handling is essential
-- **Scalability**: Batch processing is necessary for large datasets
-
-### 10.6 Academic Contribution
-
-This implementation demonstrates:
-- Proficiency in database design and optimization
-- Understanding of information retrieval principles
-- Ability to build production-ready systems
-- Academic writing and documentation skills
+**Σύνδεση:**
+- Host: `db.nbohnrjmtoyrxrxqulrj.supabase.co`
+- Database: `postgres`
+- User: `postgres`
+- Port: `5432`
 
 ---
 
-## References
+## 10. Συμπεράσματα
+
+### 10.1 Περίληψη Έργου
+
+Αυτό το έργο υλοποιεί επιτυχώς μια μηχανή αναζήτησης full-text search χρησιμοποιώντας τις εγγενείς δυνατότητες FTS του PostgreSQL. Το σύστημα επεξεργάζεται ~100,000 επιστημονικά άρθρα και παρέχει:
+
+- Αποτελεσματική φόρτωση δεδομένων από μορφή JSON Lines
+- Βελτιστοποιημένη full-text search με GIN indexes
+- Περιεκτική υλοποίηση ερωτήματος (OR, AND, ranking)
+- Ανάλυση στατιστικών όρων (DF, CF)
+- Web εφαρμογή έτοιμη για παραγωγή
+
+### 10.2 Βασικά Επιτεύγματα
+
+1. **Πλήρης Υλοποίηση**: Όλα τα απαιτούμενα συστατικά υλοποιήθηκαν
+2. **Απόδοση**: Τα GIN indexes εξασφαλίζουν γρήγορη εκτέλεση ερωτήματος
+3. **Κλιμάκωση**: Η αρχιτεκτονική υποστηρίζει μεγάλα datasets
+4. **Χρηστικότητα**: Το web interface παρέχει διαισθητική εμπειρία αναζήτησης
+5. **Τεκμηρίωση**: Περιεκτική τεκμηρίωση κώδικα και αναφοράς
+
+### 10.3 Τεχνικές Ενδείξεις
+
+**Δυνατά σημεία PostgreSQL FTS:**
+- Εγγενής ενσωμάτωση με τη βάση δεδομένων
+- Αποτελεσματική δημιουργία indexes (GIN)
+- Ευέλικτη σύνταξη ερωτήματος
+- Καλοί αλγόριθμοι ranking
+- Ρυθμίσεις συγκεκριμένες γλώσσας
+
+**Αποφάσεις Σχεδίασης:**
+- Ξεχωριστές στήλες TSVECTOR για ευελιξία
+- Αυτόματες ενημερώσεις μέσω triggers
+- Συνδυασμένα indexes για multi-field search
+- Cover density ranking για καλύτερη σχετικότητα
+
+### 10.4 Μαθήματα που Εκμαθάθηκαν
+
+- **Η δημιουργία indexes είναι Κρίσιμη**: Τα GIN indexes βελτιώνουν δραματικά την απόδοση
+- **Το Ranking Έχει Σημασία**: Το `ts_rank_cd()` παρέχει καλύτερη σχετικότητα από το `ts_rank()`
+- **Η Εμπειρία Χρήστη**: Το `plainto_tsquery()` είναι πιο φιλικό προς τον χρήστη από το `to_tsquery()`
+- **Ποιότητα Δεδομένων**: Ο σωστός χειρισμός NULL είναι απαραίτητος
+- **Κλιμάκωση**: Η batch processing είναι απαραίτητη για μεγάλα datasets
+- **Serverless Architecture**: Τα Netlify Functions παρέχουν καλή κλιμάκωση και απλότητα deployment
+
+### 10.5 Μελλοντικές Βελτιώσεις
+
+1. **Επέκταση Ερωτήματος**: Προσφορά σχετικών όρων
+2. **Faceted Search**: Φιλτράρισμα κατά journal, year, κλπ
+3. **Προηγμένο Ranking**: Προσαρμοσμένες συναρτήσεις ranking
+4. **Caching Layer**: Redis για συχνά ερωτήματα
+5. **Analytics**: Ανάλυση ερωτημάτων αναζήτησης
+6. **Υποστήριξη Πολλαπλών Γλωσσών**: Πρόσθετες ρυθμίσεις γλώσσας
+
+### 10.6 Ακαδημαϊκή Συνεισφορά
+
+Αυτή η υλοποίηση αποδεικνύει:
+- Κατανόηση σχεδίασης και βελτιστοποίησης βάσεων δεδομένων
+- Κατανόηση αρχών ανάκτησης πληροφοριών
+- Ικανότητα δημιουργίας συστημάτων έτοιμων για παραγωγή
+- Δεξιότητες ακαδημαϊκής γραφής και τεκμηρίωσης
+
+---
+
+## Παραπομπές
 
 1. PostgreSQL Documentation: Full Text Search
    https://www.postgresql.org/docs/current/textsearch.html
@@ -673,34 +662,37 @@ This implementation demonstrates:
 3. PubMed Central: Open Access Articles
    https://www.ncbi.nlm.nih.gov/pmc/
 
-4. Flask Documentation
-   https://flask.palletsprojects.com/
+4. Supabase Documentation
+   https://supabase.com/docs
+
+5. Netlify Functions Documentation
+   https://docs.netlify.com/functions/overview/
 
 ---
 
-## Appendix A: Complete SQL Scripts
+## Παράρτημα A: Πλήρη SQL Scripts
 
-See files:
+Δείτε τα αρχεία:
 - `01_schema.sql`
 - `02_load_data.sql`
 - `03_fts_setup.sql`
 - `04_queries.sql`
 
-## Appendix B: Python Code
+## Παράρτημα B: Python Code
 
-See files:
+Δείτε τα αρχεία:
 - `load_data.py`
-- `app.py`
+- `netlify/functions/search/__init__.py`
+- `netlify/functions/stats/__init__.py`
 
-## Appendix C: Web Application
+## Παράρτημα C: Web Εφαρμογή
 
-See directory:
-- `templates/index.html`
+Δείτε το αρχείο:
+- `index.html`
 
 ---
 
-**Report Generated**: December 2024  
-**Author**: Database & Information Retrieval Engineer  
-**Institution**: University Project  
-**Version**: 1.0
-
+**Αναφορά Δημιουργήθηκε:** Δεκέμβριος 2024  
+**Συγγραφέας:** Φοιτητής  
+**Ίδρυμα:** [Όνομα Πανεπιστημίου]  
+**Έκδοση:** 1.0

@@ -19,7 +19,8 @@ DB_CONFIG = {
 }
 
 def handler(event, context):
-    """Netlify function handler for stats requests"""
+    """Netlify function handler"""
+    """Handle stats requests"""
     try:
         # Connect to database
         conn = psycopg2.connect(**DB_CONFIG)
