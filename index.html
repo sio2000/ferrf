@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PubMed Full-Text Search Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+        }
+
+        .search-button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-button:active {
+            transform: translateY(0);
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-height: 200px;
+        }
+
+        .results-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .results-count {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .result-item {
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .result-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .result-abstract {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .result-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        .result-rank {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #c33;
+            margin-bottom: 20px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .stats-item {
+            display: inline-block;
+            margin: 0 20px;
+            color: #667eea;
+        }
+
+        .stats-label {
+            font-size: 0.9em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .stats-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 PubMed Full-Text Search Engine</h1>
+            <p>Αναζήτηση σε επιστημονικά άρθρα με PostgreSQL Full Text Search</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stats-item">
+                <div class="stats-label">Σύνολο Εγγράφων</div>
+                <div class="stats-value" id="total-docs">-</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-label">Με Τίτλο</div>
+                <div class="stats-value" id="with-title">-</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-label">Με Περίληψη</div>
+                <div class="stats-value" id="with-abstract">-</div>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <form class="search-form" id="search-form">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="search-input" 
+                    placeholder="Πληκτρολογήστε όρους αναζήτησης (π.χ. cancer liver, rat, etc.)"
+                    autocomplete="off"
+                >
+                <button type="submit" class="search-button">Αναζήτηση</button>
+            </form>
+        </div>
+
+        <div class="results-container" id="results-container">
+            <div class="no-results">
+                Πληκτρολογήστε έναν όρο αναζήτησης για να ξεκινήσετε
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/.netlify/functions';
+        
+        // Load statistics on page load
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                
+                document.getElementById('total-docs').textContent = data.total_documents.toLocaleString();
+                document.getElementById('with-title').textContent = data.with_title.toLocaleString();
+                document.getElementById('with-abstract').textContent = data.with_abstract.toLocaleString();
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Perform search
+        async function performSearch(query) {
+            const resultsContainer = document.getElementById('results-container');
+            
+            if (!query.trim()) {
+                resultsContainer.innerHTML = '<div class="no-results">Πληκτρολογήστε έναν όρο αναζήτησης</div>';
+                return;
+            }
+
+            resultsContainer.innerHTML = '<div class="loading">Αναζήτηση σε εξέλιξη...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    resultsContainer.innerHTML = `<div class="error">Σφάλμα: ${data.error}</div>`;
+                    return;
+                }
+
+                if (data.count === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">Δεν βρέθηκαν αποτελέσματα</div>';
+                    return;
+                }
+
+                let html = `
+                    <div class="results-header">
+                        <div class="results-count">Βρέθηκαν ${data.count} αποτελέσματα για "${data.query}"</div>
+                    </div>
+                `;
+
+                data.results.forEach(result => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-title">${escapeHtml(result.title || 'Χωρίς τίτλο')}</div>
+                            <div class="result-abstract">${escapeHtml(result.abstract_preview || 'Χωρίς περίληψη')}...</div>
+                            <div class="result-meta">
+                                <span>ID: ${result.id}</span>
+                                <span class="result-rank">Rank: ${result.rank.toFixed(4)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                resultsContainer.innerHTML = html;
+
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="error">Σφάλμα: ${error.message}</div>`;
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Handle form submission
+        document.getElementById('search-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = document.getElementById('search-input').value;
+            performSearch(query);
+        });
+
+        // Load stats on page load
+        loadStats();
+    </script>
+</body>
+</html>
+
