@@ -7,11 +7,14 @@ Loads JSON Lines file (data.txt) into PostgreSQL database
 import json
 import psycopg2
 import sys
+import os
 from psycopg2.extras import execute_batch
 from pathlib import Path
+import socket
 
 # Database connection parameters
-# Using connection string format for better compatibility
+# Supabase connection string (from Supabase dashboard > Settings > Database > Connection string)
+# Format: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
 DB_CONNECTION_STRING = 'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres'
 
 # Alternative: Individual parameters (fallback)
@@ -39,21 +42,52 @@ def load_json_lines(file_path):
 def load_data_to_postgres(json_file_path, batch_size=1000):
     """Load JSON Lines data into PostgreSQL docs table"""
     
-    # Connect to database
+    # Test DNS resolution first (supports both IPv4 and IPv6)
+    hostname = 'db.nbohnrjmtoyrxrxqulrj.supabase.co'
+    print(f"Testing DNS resolution for {hostname}...")
     try:
-        # Try connection string first
+        # Try IPv4 first
         try:
-            conn = psycopg2.connect(DB_CONNECTION_STRING)
-            print("Connected to PostgreSQL database using connection string")
+            ip = socket.gethostbyname(hostname)
+            print(f"DNS resolved to IPv4: {ip}")
+        except socket.gaierror:
+            # Try IPv6
+            addrinfo = socket.getaddrinfo(hostname, 5432, socket.AF_INET6)
+            if addrinfo:
+                print(f"DNS resolved to IPv6: {addrinfo[0][4][0]}")
+    except Exception as e:
+        print(f"DNS resolution info: {e}")
+        print("Trying to connect anyway (psycopg2 handles DNS)...")
+    
+    # Connect to database - try multiple methods
+    conn = None
+    try:
+        # Try pooler connection first (most reliable)
+        try:
+            print("Trying pooler connection...")
+            conn = psycopg2.connect(DB_CONNECTION_STRING_POOLER, connect_timeout=10)
+            print("✓ Connected using pooler connection")
         except Exception as e1:
-            # Fallback to individual parameters
-            print(f"Connection string failed, trying individual parameters: {e1}")
-            conn = psycopg2.connect(**DB_CONFIG)
-            print("Connected to PostgreSQL database using individual parameters")
+            print(f"Pooler failed: {e1}")
+            # Try direct connection string
+            try:
+                print("Trying direct connection string...")
+                conn = psycopg2.connect(DB_CONNECTION_STRING, connect_timeout=10)
+                print("✓ Connected using direct connection string")
+            except Exception as e2:
+                print(f"Direct connection failed: {e2}")
+                # Fallback to individual parameters
+                print("Trying individual parameters...")
+                conn = psycopg2.connect(**DB_CONFIG, connect_timeout=10)
+                print("✓ Connected using individual parameters")
         cur = conn.cursor()
     except Exception as e:
-        print(f"Error connecting to database: {e}", file=sys.stderr)
-        print(f"Connection string: {DB_CONNECTION_STRING.replace('10Stomathima!', '***')}", file=sys.stderr)
+        print(f"\n❌ Error connecting to database: {e}", file=sys.stderr)
+        print("\nTroubleshooting:", file=sys.stderr)
+        print("1. Check your internet connection", file=sys.stderr)
+        print("2. Try: ipconfig /flushdns (in PowerShell as Administrator)", file=sys.stderr)
+        print("3. Verify Supabase project is active", file=sys.stderr)
+        print("4. Try using Supabase SQL Editor to verify connection", file=sys.stderr)
         sys.exit(1)
     
     # Clear existing data (optional - comment out if you want to append)
