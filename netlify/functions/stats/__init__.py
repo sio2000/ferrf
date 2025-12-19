@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add project root to path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.insert(0, project_root)
 
 import psycopg2
@@ -30,55 +30,31 @@ DB_CONFIG = {
 }
 
 def handler(event, context):
-    """Netlify function handler for search requests"""
-    logger.info(f"Search function called")
+    """Netlify function handler for stats requests"""
+    logger.info(f"Stats function called")
     try:
-        # Get query parameter
-        query_params = event.get('queryStringParameters') or {}
-        query = query_params.get('q', '').strip()
-        logger.info(f"Search query: {query}")
-        
-        if not query:
-            return {
-                'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'error': 'Query is required'})
-            }
-        
         # Connect to database
         logger.info("Connecting to database...")
         try:
             conn = psycopg2.connect(DB_CONNECTION_STRING)
-        except:
+        except Exception as e:
+            logger.warning(f"Connection string failed: {e}, trying individual parameters")
             conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         logger.info("Database connection established")
         
-        # Build full-text search query
-        search_query = """
+        # Get total document count
+        cur.execute("SELECT COUNT(*) AS total FROM docs;")
+        total = cur.fetchone()['total']
+        
+        # Get documents with title/abstract
+        cur.execute("""
             SELECT 
-                id,
-                title,
-                LEFT(abstract, 500) AS abstract_preview,
-                ts_rank_cd(
-                    (title_tsv || abstract_tsv),
-                    plainto_tsquery('english', %s)
-                ) AS rank
-            FROM docs
-            WHERE (title_tsv || abstract_tsv) @@ plainto_tsquery('english', %s)
-            ORDER BY rank DESC
-            LIMIT 50
-        """
-        
-        cur.execute(search_query, (query, query))
-        results = cur.fetchall()
-        logger.info(f"Found {len(results)} results")
-        
-        # Convert results to list of dicts
-        results_list = [dict(row) for row in results]
+                COUNT(*) FILTER (WHERE title IS NOT NULL AND title != '') AS with_title,
+                COUNT(*) FILTER (WHERE abstract IS NOT NULL AND abstract != '') AS with_abstract
+            FROM docs;
+        """)
+        stats = cur.fetchone()
         
         cur.close()
         conn.close()
@@ -90,16 +66,16 @@ def handler(event, context):
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({
-                'query': query,
-                'count': len(results_list),
-                'results': results_list
+                'total_documents': total,
+                'with_title': stats['with_title'],
+                'with_abstract': stats['with_abstract']
             })
         }
-        logger.info("Returning successful response")
+        logger.info(f"Stats retrieved successfully: total={total}, with_title={stats['with_title']}, with_abstract={stats['with_abstract']}")
         return response
     
     except Exception as e:
-        logger.error(f"Error in search function: {str(e)}", exc_info=True)
+        logger.error(f"Error in stats function: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': {
