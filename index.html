@@ -244,30 +244,50 @@
 
     <script>
         const API_BASE = '/.netlify/functions';
+        console.log('🚀 Web app initialized');
+        console.log('📍 API Base URL:', API_BASE);
+        console.log('🌐 Current URL:', window.location.href);
         
         // Load statistics on page load
         async function loadStats() {
+            const statsUrl = `${API_BASE}/stats`;
+            console.log('📊 Loading stats from:', statsUrl);
             try {
-                const response = await fetch(`${API_BASE}/stats`);
+                console.log('📡 Sending request to stats endpoint...');
+                const response = await fetch(statsUrl);
+                console.log('📥 Response received:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ HTTP error response:', errorText);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const contentType = response.headers.get('content-type');
+                console.log('📄 Content-Type:', contentType);
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 200));
+                    console.error('❌ Non-JSON response:', text.substring(0, 500));
                     throw new Error('Server returned non-JSON response');
                 }
                 
                 const data = await response.json();
+                console.log('✅ Stats data received:', data);
                 
                 document.getElementById('total-docs').textContent = data.total_documents.toLocaleString();
                 document.getElementById('with-title').textContent = data.with_title.toLocaleString();
                 document.getElementById('with-abstract').textContent = data.with_abstract.toLocaleString();
             } catch (error) {
-                console.error('Error loading stats:', error);
+                console.error('❌ Error loading stats:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
                 document.getElementById('total-docs').textContent = 'N/A';
                 document.getElementById('with-title').textContent = 'N/A';
                 document.getElementById('with-abstract').textContent = 'N/A';
@@ -285,21 +305,39 @@
 
             resultsContainer.innerHTML = '<div class="loading">Αναζήτηση σε εξέλιξη...</div>';
 
+            const searchUrl = `${API_BASE}/search?q=${encodeURIComponent(query)}`;
+            console.log('🔍 Performing search:', query);
+            console.log('📡 Search URL:', searchUrl);
+            
             try {
-                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+                console.log('📤 Sending search request...');
+                const response = await fetch(searchUrl);
+                console.log('📥 Search response received:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ HTTP error response:', errorText);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const contentType = response.headers.get('content-type');
+                console.log('📄 Content-Type:', contentType);
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 200));
+                    console.error('❌ Non-JSON response:', text.substring(0, 500));
                     throw new Error('Server returned non-JSON response. Check function logs.');
                 }
                 
                 const data = await response.json();
+                console.log('✅ Search data received:', {
+                    query: data.query,
+                    count: data.count,
+                    resultsCount: data.results ? data.results.length : 0
+                });
 
                 if (data.error) {
                     resultsContainer.innerHTML = `<div class="error">Σφάλμα: ${data.error}</div>`;
@@ -333,6 +371,12 @@
                 resultsContainer.innerHTML = html;
 
             } catch (error) {
+                console.error('❌ Search error:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
                 resultsContainer.innerHTML = `<div class="error">Σφάλμα: ${error.message}</div>`;
             }
         }
