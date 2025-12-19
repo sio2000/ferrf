@@ -11,6 +11,10 @@ from psycopg2.extras import execute_batch
 from pathlib import Path
 
 # Database connection parameters
+# Using connection string format for better compatibility
+DB_CONNECTION_STRING = 'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres'
+
+# Alternative: Individual parameters (fallback)
 DB_CONFIG = {
     'host': 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
     'database': 'postgres',
@@ -37,11 +41,19 @@ def load_data_to_postgres(json_file_path, batch_size=1000):
     
     # Connect to database
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        # Try connection string first
+        try:
+            conn = psycopg2.connect(DB_CONNECTION_STRING)
+            print("Connected to PostgreSQL database using connection string")
+        except Exception as e1:
+            # Fallback to individual parameters
+            print(f"Connection string failed, trying individual parameters: {e1}")
+            conn = psycopg2.connect(**DB_CONFIG)
+            print("Connected to PostgreSQL database using individual parameters")
         cur = conn.cursor()
-        print("Connected to PostgreSQL database")
     except Exception as e:
         print(f"Error connecting to database: {e}", file=sys.stderr)
+        print(f"Connection string: {DB_CONNECTION_STRING.replace('10Stomathima!', '***')}", file=sys.stderr)
         sys.exit(1)
     
     # Clear existing data (optional - comment out if you want to append)

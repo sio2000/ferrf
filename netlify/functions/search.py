@@ -14,7 +14,13 @@ sys.path.insert(0, project_root)
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-# Database configuration
+# Database configuration - using connection string for better compatibility
+DB_CONNECTION_STRING = os.getenv(
+    'DATABASE_URL',
+    'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres'
+)
+
+# Fallback to individual parameters
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'db.nbohnrjmtoyrxrxqulrj.supabase.co'),
     'database': os.getenv('DB_NAME', 'postgres'),
@@ -44,7 +50,10 @@ def handler(event, context):
         
         # Connect to database
         logger.info("Connecting to database...")
-        conn = psycopg2.connect(**DB_CONFIG)
+        try:
+            conn = psycopg2.connect(DB_CONNECTION_STRING)
+        except:
+            conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         logger.info("Database connection established")
         
