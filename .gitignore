@@ -33,6 +33,13 @@ desktop.ini
 # Uncomment if data.txt is too large
 # data.txt
 
+# Data folder - too large for git (DO NOT COMMIT)
+data/
+data.txt
+*.txt
+!requirements.txt
+!*.sql
+
 # Logs
 *.log
 
