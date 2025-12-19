@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database dumps (too large for git)
+*.dump
+*.sql.backup
+
+# Large data files (keep structure, not data)
+# Uncomment if data.txt is too large
+# data.txt
+
+# Logs
+*.log
+
+# Flask
+instance/
+.webassets-cache
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
