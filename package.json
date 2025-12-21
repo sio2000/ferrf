@@ -1,0 +1,9 @@
+{
+  "name": "vasilisthomaidis-search-engine",
+  "version": "1.0.0",
+  "description": "vasilisthomaidis Full-Text Search Engine",
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+}
+
