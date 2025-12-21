@@ -2,14 +2,13 @@ const { Client } = require('pg');
 
 // Database configuration
 const getDbConfig = () => {
-  // Use transaction pooler (port 5432) - better compatibility
-  const poolerUrl = process.env.DATABASE_URL || 
-    'postgresql://postgres:10Stomathima!@aws-0-eu-central-1.pooler.supabase.com:5432/postgres';
-  
-  const connectionString = process.env.DATABASE_URL || poolerUrl;
-  
+  // Use individual parameters instead of connection string for better DNS resolution
   return {
-    connectionString: connectionString,
+    host: process.env.DB_HOST || 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'postgres',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '10Stomathima!',
     ssl: {
       rejectUnauthorized: false
     }
@@ -42,30 +41,15 @@ exports.handler = async (event, context) => {
     // Connect to database
     console.log('Connecting to database...');
     const dbConfig = getDbConfig();
-    console.log('Using connection string:', dbConfig.connectionString.replace(/:[^:@]+@/, ':****@'));
-    let client = new Client(dbConfig);
-    
-    try {
-      await client.connect();
-      console.log('✓ Database connection established');
-    } catch (connectError) {
-      console.error('Connection failed, trying direct connection...', connectError.message);
-      // Try direct connection as fallback
-      try {
-        await client.end();
-      } catch (e) {}
-      const directConfig = {
-        host: 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
-        port: 5432,
-        database: 'postgres',
-        user: 'postgres',
-        password: '10Stomathima!',
-        ssl: { rejectUnauthorized: false }
-      };
-      client = new Client(directConfig);
-      await client.connect();
-      console.log('✓ Database connection established via direct connection');
-    }
+    console.log('Using config:', { 
+      host: dbConfig.host, 
+      port: dbConfig.port, 
+      database: dbConfig.database, 
+      user: dbConfig.user 
+    });
+    const client = new Client(dbConfig);
+    await client.connect();
+    console.log('✓ Database connection established');
     
     // Build full-text search query
     const searchQuery = `
