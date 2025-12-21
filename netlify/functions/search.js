@@ -2,12 +2,12 @@ const { Client } = require('pg');
 
 // Database configuration
 const getDbConfig = () => {
-  // Use individual parameters instead of connection string for better DNS resolution
+  // Use Supabase connection with project ref in username
   return {
     host: process.env.DB_HOST || 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
     port: parseInt(process.env.DB_PORT || '5432'),
     database: process.env.DB_NAME || 'postgres',
-    user: process.env.DB_USER || 'postgres',
+    user: process.env.DB_USER || 'postgres.nbohnrjmtoyrxrxqulrj',
     password: process.env.DB_PASSWORD || '10Stomathima!',
     ssl: {
       rejectUnauthorized: false
