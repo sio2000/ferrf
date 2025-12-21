@@ -2,12 +2,9 @@ const { Client } = require('pg');
 
 // Database configuration
 const getDbConfig = () => {
-  // Try connection pooler first (better for serverless)
+  // Use transaction pooler (port 5432) - better compatibility
   const poolerUrl = process.env.DATABASE_URL || 
-    'postgresql://postgres:10Stomathima!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
-  
-  // Fallback to direct connection
-  const directUrl = 'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres';
+    'postgresql://postgres:10Stomathima!@aws-0-eu-central-1.pooler.supabase.com:5432/postgres';
   
   const connectionString = process.env.DATABASE_URL || poolerUrl;
   
