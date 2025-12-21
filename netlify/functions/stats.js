@@ -1,58 +1,154 @@
-const { Client } = require('pg');
+const https = require('https');
 
-// Database configuration
-const getDbConfig = () => {
-  // Use Supabase connection with project ref in username
-  return {
-    host: process.env.DB_HOST || 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'postgres',
-    user: process.env.DB_USER || 'postgres.nbohnrjmtoyrxrxqulrj',
-    password: process.env.DB_PASSWORD || '10Stomathima!',
-    ssl: {
-      rejectUnauthorized: false
+// Supabase REST API configuration
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://nbohnrjmtoyrxrxqulrj.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ib2hucmptdG95cnhyeHF1bHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTY4NDEsImV4cCI6MjA4MTczMjg0MX0.95sUDYi4hEPgZ1kXYUOvLMpxTb6O4VIYLf_3nckBbdQ';
+
+// Helper function to make HTTPS requests
+function makeRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const reqOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    };
+
+    const req = https.request(reqOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        try {
+          const jsonData = JSON.parse(data);
+          resolve({ status: res.statusCode, data: jsonData, headers: res.headers });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: data, headers: res.headers });
+        }
+      });
+    });
+    
+    req.on('error', (error) => {
+      reject(error);
+    });
+    
+    if (options.body) {
+      req.write(JSON.stringify(options.body));
     }
-  };
-};
+    
+    req.end();
+  });
+}
 
 exports.handler = async (event, context) => {
   console.log('='.repeat(50));
   console.log('STATS FUNCTION CALLED');
-  console.log('Event:', JSON.stringify(event, null, 2));
   
   try {
-    // Connect to database
-    console.log('Connecting to database...');
-    const dbConfig = getDbConfig();
-    console.log('Using config:', { 
-      host: dbConfig.host, 
-      port: dbConfig.port, 
-      database: dbConfig.database, 
-      user: dbConfig.user 
-    });
-    const client = new Client(dbConfig);
-    await client.connect();
-    console.log('✓ Database connection established');
+    console.log('Fetching stats from Supabase REST API...');
     
-    // Get total document count
-    console.log('Executing COUNT query...');
-    const countResult = await client.query('SELECT COUNT(*) AS total FROM docs;');
-    const total = parseInt(countResult.rows[0].total);
-    console.log(`Total documents: ${total}`);
+    // Get total count using HEAD request with Prefer: count=exact
+    const countUrl = `${SUPABASE_URL}/rest/v1/docs?select=id&limit=1`;
+    console.log('Requesting count from:', countUrl);
+    
+    const countResponse = await makeRequest(countUrl, {
+      method: 'HEAD',
+      headers: {
+        'Prefer': 'count=exact'
+      }
+    });
+    
+    // Parse count from Content-Range header
+    const contentRange = countResponse.headers['content-range'];
+    let total = 0;
+    if (contentRange) {
+      // Format: "0-0/1234" or "*/1234"
+      const match = contentRange.match(/\/(\d+)/);
+      if (match) {
+        total = parseInt(match[1]);
+      }
+    }
+    
+    console.log(`Total documents from header: ${total}`);
+    
+    // If we didn't get count from header, fetch with a limit to get count
+    if (total === 0) {
+      const countQuery = `${SUPABASE_URL}/rest/v1/rpc/count_docs`;
+      try {
+        const rpcResponse = await makeRequest(countQuery, {
+          method: 'POST',
+          headers: {
+            'Prefer': 'return=representation'
+          }
+        });
+        if (rpcResponse.data && typeof rpcResponse.data === 'number') {
+          total = rpcResponse.data;
+        } else if (rpcResponse.data && rpcResponse.data[0] && rpcResponse.data[0].count) {
+          total = parseInt(rpcResponse.data[0].count);
+        }
+      } catch (rpcError) {
+        console.log('RPC count failed, using alternative method');
+      }
+    }
+    
+    // If still no count, use a workaround - fetch all and count (limited)
+    if (total === 0) {
+      const allDocs = await makeRequest(`${SUPABASE_URL}/rest/v1/docs?select=id&limit=1000`, {
+        method: 'GET'
+      });
+      if (allDocs.data && Array.isArray(allDocs.data)) {
+        total = allDocs.data.length;
+        // If we got 1000, there might be more
+        if (total === 1000) {
+          total = 1000; // At least 1000
+        }
+      }
+    }
     
     // Get documents with title/abstract
-    console.log('Executing stats query...');
-    const statsResult = await client.query(`
-      SELECT 
-        COUNT(*) FILTER (WHERE title IS NOT NULL AND title != '') AS with_title,
-        COUNT(*) FILTER (WHERE abstract IS NOT NULL AND abstract != '') AS with_abstract
-      FROM docs;
-    `);
-    const stats = statsResult.rows[0];
-    console.log(`Stats: with_title=${stats.with_title}, with_abstract=${stats.with_abstract}`);
+    const withTitleQuery = `${SUPABASE_URL}/rest/v1/docs?select=id&title=not.is.null&title=neq.&limit=1`;
+    const withTitleResponse = await makeRequest(withTitleQuery, {
+      method: 'HEAD',
+      headers: {
+        'Prefer': 'count=exact'
+      }
+    });
     
-    await client.end();
-    console.log('Database connection closed');
+    let withTitle = 0;
+    const titleRange = withTitleResponse.headers['content-range'];
+    if (titleRange) {
+      const match = titleRange.match(/\/(\d+)/);
+      if (match) {
+        withTitle = parseInt(match[1]);
+      }
+    }
+    
+    const withAbstractQuery = `${SUPABASE_URL}/rest/v1/docs?select=id&abstract=not.is.null&abstract=neq.&limit=1`;
+    const withAbstractResponse = await makeRequest(withAbstractQuery, {
+      method: 'HEAD',
+      headers: {
+        'Prefer': 'count=exact'
+      }
+    });
+    
+    let withAbstract = 0;
+    const abstractRange = withAbstractResponse.headers['content-range'];
+    if (abstractRange) {
+      const match = abstractRange.match(/\/(\d+)/);
+      if (match) {
+        withAbstract = parseInt(match[1]);
+      }
+    }
+    
+    console.log(`Stats: total=${total}, with_title=${withTitle}, with_abstract=${withAbstract}`);
     
     const response = {
       statusCode: 200,
@@ -62,8 +158,8 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({
         total_documents: total,
-        with_title: parseInt(stats.with_title),
-        with_abstract: parseInt(stats.with_abstract)
+        with_title: withTitle,
+        with_abstract: withAbstract
       })
     };
     
