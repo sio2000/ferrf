@@ -81,6 +81,7 @@ exports.handler = async (event, context) => {
     let results = [];
     
     try {
+      console.log('Calling RPC function:', searchRpcUrl);
       const rpcResponse = await makeRequest(searchRpcUrl, {
         method: 'POST',
         headers: {
@@ -91,30 +92,48 @@ exports.handler = async (event, context) => {
         }
       });
       
-      if (rpcResponse.status === 200 && Array.isArray(rpcResponse.data)) {
-        results = rpcResponse.data;
-        console.log(`Found ${results.length} results via RPC`);
+      console.log('RPC response status:', rpcResponse.status);
+      console.log('RPC response data type:', typeof rpcResponse.data);
+      
+      if (rpcResponse.status === 200 || rpcResponse.status === 201) {
+        if (Array.isArray(rpcResponse.data)) {
+          results = rpcResponse.data;
+          console.log(`Found ${results.length} results via RPC`);
+        } else if (rpcResponse.data && Array.isArray(rpcResponse.data)) {
+          results = rpcResponse.data;
+          console.log(`Found ${results.length} results via RPC (nested)`);
+        } else {
+          console.log('RPC returned non-array data:', rpcResponse.data);
+        }
       }
     } catch (rpcError) {
-      console.log('RPC search failed, trying direct query:', rpcError.message);
+      console.log('RPC search failed, trying ilike fallback:', rpcError.message);
       
       // Fallback: Use ilike for basic text search
-      // URL encode the query
-      const encodedQuery = encodeURIComponent(query);
-      const searchUrl = `${SUPABASE_URL}/rest/v1/docs?select=id,title,abstract&or=(title.ilike.*${encodedQuery}*,abstract.ilike.*${encodedQuery}*)&limit=50`;
+      const encodedQuery = encodeURIComponent(`%${query}%`);
+      const searchUrl = `${SUPABASE_URL}/rest/v1/docs?select=id,title,abstract&or=(title.ilike.${encodedQuery},abstract.ilike.${encodedQuery})&limit=50`;
       
-      const searchResponse = await makeRequest(searchUrl, {
-        method: 'GET'
-      });
+      console.log('Fallback search URL:', searchUrl);
       
-      if (searchResponse.status === 200 && Array.isArray(searchResponse.data)) {
-        results = searchResponse.data.map(doc => ({
-          id: doc.id,
-          title: doc.title || '',
-          abstract_preview: (doc.abstract || '').substring(0, 500),
-          rank: 1.0 // Simple rank for ilike search
-        }));
-        console.log(`Found ${results.length} results via ilike search`);
+      try {
+        const searchResponse = await makeRequest(searchUrl, {
+          method: 'GET'
+        });
+        
+        console.log('Fallback response status:', searchResponse.status);
+        
+        if (searchResponse.status === 200 && Array.isArray(searchResponse.data)) {
+          results = searchResponse.data.map(doc => ({
+            id: doc.id,
+            title: doc.title || '',
+            abstract_preview: (doc.abstract || '').substring(0, 500),
+            rank: 1.0 // Simple rank for ilike search
+          }));
+          console.log(`Found ${results.length} results via ilike search`);
+        }
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError.message);
+        throw fallbackError;
       }
     }
     
