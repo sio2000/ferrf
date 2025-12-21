@@ -2,8 +2,14 @@ const { Client } = require('pg');
 
 // Database configuration
 const getDbConfig = () => {
-  const connectionString = process.env.DATABASE_URL || 
-    'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres';
+  // Try connection pooler first (better for serverless)
+  const poolerUrl = process.env.DATABASE_URL || 
+    'postgresql://postgres:10Stomathima!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+  
+  // Fallback to direct connection
+  const directUrl = 'postgresql://postgres:10Stomathima!@db.nbohnrjmtoyrxrxqulrj.supabase.co:5432/postgres';
+  
+  const connectionString = process.env.DATABASE_URL || poolerUrl;
   
   return {
     connectionString: connectionString,
@@ -38,9 +44,30 @@ exports.handler = async (event, context) => {
     
     // Connect to database
     console.log('Connecting to database...');
-    const client = new Client(getDbConfig());
-    await client.connect();
-    console.log('✓ Database connection established');
+    const dbConfig = getDbConfig();
+    console.log('Using connection string:', dbConfig.connectionString.replace(/:[^:@]+@/, ':****@'));
+    const client = new Client(dbConfig);
+    
+    try {
+      await client.connect();
+      console.log('✓ Database connection established');
+    } catch (connectError) {
+      console.error('Connection failed, trying direct URL...', connectError.message);
+      // Try direct connection as fallback
+      const directConfig = {
+        host: 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
+        port: 5432,
+        database: 'postgres',
+        user: 'postgres',
+        password: '10Stomathima!',
+        ssl: { rejectUnauthorized: false }
+      };
+      await client.end();
+      const directClient = new Client(directConfig);
+      await directClient.connect();
+      console.log('✓ Database connection established via direct connection');
+      return { client: directClient, isDirect: true };
+    }
     
     // Build full-text search query
     const searchQuery = `
