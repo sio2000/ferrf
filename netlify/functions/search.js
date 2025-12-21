@@ -46,14 +46,17 @@ exports.handler = async (event, context) => {
     console.log('Connecting to database...');
     const dbConfig = getDbConfig();
     console.log('Using connection string:', dbConfig.connectionString.replace(/:[^:@]+@/, ':****@'));
-    const client = new Client(dbConfig);
+    let client = new Client(dbConfig);
     
     try {
       await client.connect();
       console.log('✓ Database connection established');
     } catch (connectError) {
-      console.error('Connection failed, trying direct URL...', connectError.message);
+      console.error('Connection failed, trying direct connection...', connectError.message);
       // Try direct connection as fallback
+      try {
+        await client.end();
+      } catch (e) {}
       const directConfig = {
         host: 'db.nbohnrjmtoyrxrxqulrj.supabase.co',
         port: 5432,
@@ -62,11 +65,9 @@ exports.handler = async (event, context) => {
         password: '10Stomathima!',
         ssl: { rejectUnauthorized: false }
       };
-      await client.end();
-      const directClient = new Client(directConfig);
-      await directClient.connect();
+      client = new Client(directConfig);
+      await client.connect();
       console.log('✓ Database connection established via direct connection');
-      return { client: directClient, isDirect: true };
     }
     
     // Build full-text search query
